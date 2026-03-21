@@ -40,12 +40,16 @@ const KioskPage = () => {
     setLoading(true);
     setMessage({ text: "", type: "" });
     try {
-      const ticket = await queueApi.issueTicket(peopleCount, phoneNumber);
+      const ticket = await queueApi.issueTicket(peopleCount || 1, phoneNumber);
       setIssuedTicket(ticket);
       setPhoneNumber("");
       fetchStats();
     } catch (error: any) {
-      setMessage({ text: error.response?.data?.error || "Failed to issue ticket", type: "error" });
+      const errorData = error.response?.data?.error;
+      const errorMsg = Array.isArray(errorData) 
+        ? errorData.map((i: any) => i.message).join(", ")
+        : (errorData || "Failed to issue ticket");
+      setMessage({ text: errorMsg, type: "error" });
     } finally {
       setLoading(false);
     }

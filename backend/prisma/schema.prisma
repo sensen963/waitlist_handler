@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -15,7 +12,7 @@ model QueueEntry {
   ticketNumber String   @unique
   peopleCount  Int
   phoneNumber  String
-  status       String   @default("WAITING") // WAITING, SERVED, CANCELLED
+  status       String   @default("WAITING")
   position     Int
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

@@ -25,7 +25,11 @@ const UserPage = () => {
       const data = await queueApi.getStatus(t);
       setEntry(data);
     } catch (error: any) {
-      setMessage({ text: error.response?.data?.error || "Ticket not found", type: "error" });
+      const errorData = error.response?.data?.error;
+      const errorMsg = Array.isArray(errorData) 
+        ? errorData.map((i: any) => i.message).join(", ")
+        : (errorData || "Ticket not found");
+      setMessage({ text: errorMsg, type: "error" });
       setEntry(null);
     } finally {
       setLoading(false);
@@ -43,7 +47,11 @@ const UserPage = () => {
       setMessage({ text: "Cancelled successfully", type: "success" });
       setEntry(null);
     } catch (error: any) {
-      setMessage({ text: error.response?.data?.error || "Failed to cancel", type: "error" });
+      const errorData = error.response?.data?.error;
+      const errorMsg = Array.isArray(errorData) 
+        ? errorData.map((i: any) => i.message).join(", ")
+        : (errorData || "Failed to cancel");
+      setMessage({ text: errorMsg, type: "error" });
     } finally {
       setLoading(false);
     }

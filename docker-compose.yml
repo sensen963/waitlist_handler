@@ -6,9 +6,9 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./backend/dev.db:/app/dev.db
+      - ./backend/prisma/dev.db:/app/prisma/dev.db
     environment:
-      - DATABASE_URL=file:/app/dev.db
+      - DATABASE_URL=file:/app/prisma/dev.db
       - PORT=3001
 
   frontend:

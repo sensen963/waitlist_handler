@@ -47,6 +47,7 @@ app.post("/api/queue", async (req, res) => {
     const groupsAhead = await queueService.getTotalWaiting(); // Total including self
     res.status(201).json({ ...entry, groupsAhead });
   } catch (error) {
+    console.error("Error issuing ticket:", error);
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.issues });
     }
