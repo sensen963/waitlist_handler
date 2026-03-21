@@ -1,8 +1,10 @@
 import express from "express";
 import cors from "cors";
 import { z } from "zod";
+import { PrismaClient } from "@prisma/client";
 import { queueService } from "./services/queue.service";
 
+const prisma = new PrismaClient();
 const app = express();
 const port = process.env.PORT || 3001;
 
@@ -112,6 +114,19 @@ app.patch("/api/queue/reorder", async (req, res) => {
       return res.status(400).json({ error: error.errors });
     }
     res.status(500).json({ error: "Failed to reorder" });
+  }
+});
+
+// Staff: Reset queue (simulating end of day)
+app.post("/api/queue/reset", async (req, res) => {
+  try {
+    await prisma.queueEntry.updateMany({
+      where: { status: "WAITING" },
+      data: { status: "CANCELLED", position: -1 },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to reset queue" });
   }
 });
 

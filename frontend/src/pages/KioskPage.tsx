@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { queueApi, QueueEntry } from "../api/queue";
+import { QRCodeSVG } from "qrcode.react";
 
 const KioskPage = () => {
   const [totalWaiting, setTotalWaiting] = useState(0);
@@ -10,6 +11,11 @@ const KioskPage = () => {
   const [cancelPhone, setCancelPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
+
+  const getTicketUrl = (ticketNumber: string) => {
+    const baseUrl = window.location.origin + window.location.pathname;
+    return `${baseUrl}#user?t=${ticketNumber}`;
+  };
 
   useEffect(() => {
     fetchStats();
@@ -73,6 +79,12 @@ const KioskPage = () => {
           <h3 className="text-2xl font-bold text-green-600 mb-4">Ticket Issued!</h3>
           <p className="text-gray-500 mb-2">Your Ticket Number</p>
           <p className="text-6xl font-black mb-6">{issuedTicket.ticketNumber}</p>
+          <div className="flex justify-center mb-6">
+            <div className="p-4 bg-white border-2 border-gray-100 rounded-lg shadow-inner">
+              <QRCodeSVG value={getTicketUrl(issuedTicket.ticketNumber)} size={120} />
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mb-6">Scan to track your position in line</p>
           <div className="p-4 bg-green-50 rounded-xl mb-6">
             <p className="text-green-800">Groups ahead of you:</p>
             <p className="text-4xl font-bold">{issuedTicket.groupsAhead} <span className="text-xl font-normal text-green-700">groups</span></p>
@@ -83,7 +95,6 @@ const KioskPage = () => {
           >
             Done
           </button>
-          <p className="text-xs text-gray-400 mt-4">Scan QR on printed ticket (Simulated: use #user?t={issuedTicket.ticketNumber})</p>
         </div>
       ) : (
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">

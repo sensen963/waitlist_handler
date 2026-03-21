@@ -42,6 +42,16 @@ const StaffPage = () => {
     }
   };
 
+  const handleReset = async () => {
+    if (!confirm("This will CLEAR ALL waiting groups. Are you sure? (End of Day reset)")) return;
+    try {
+      await queueApi.resetQueue();
+      fetchQueue();
+    } catch (error) {
+      alert("Failed to reset queue");
+    }
+  };
+
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-8">
@@ -49,9 +59,17 @@ const StaffPage = () => {
           <h2 className="text-3xl font-bold text-green-600">Staff Dashboard</h2>
           <p className="text-sm text-gray-500 mt-1">Manage waiting groups and reorder if needed.</p>
         </div>
-        <div className="text-right">
-          <p className="text-gray-500 text-sm">Current Waiting</p>
-          <p className="text-3xl font-bold text-green-600">{queue.length} Groups</p>
+        <div className="flex gap-4 items-center">
+          <button
+            onClick={handleReset}
+            className="text-xs bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600 px-3 py-2 rounded-lg font-medium transition-colors"
+          >
+            Reset Day
+          </button>
+          <div className="text-right border-l pl-4 border-gray-200">
+            <p className="text-gray-500 text-sm">Current Waiting</p>
+            <p className="text-3xl font-bold text-green-600">{queue.length} Groups</p>
+          </div>
         </div>
       </div>
 

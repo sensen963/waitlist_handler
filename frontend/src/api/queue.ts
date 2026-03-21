@@ -55,4 +55,9 @@ export const queueApi = {
     });
     return response.data;
   },
+
+  async resetQueue() {
+    const response = await axios.post(`${API_BASE_URL}/queue/reset`);
+    return response.data;
+  },
 };
