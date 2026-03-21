@@ -48,7 +48,7 @@ app.post("/api/queue", async (req, res) => {
     res.status(201).json({ ...entry, groupsAhead });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.errors });
+      return res.status(400).json({ error: error.issues });
     }
     res.status(500).json({ error: "Failed to issue ticket" });
   }
@@ -76,7 +76,7 @@ app.delete("/api/queue/cancel", async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.errors });
+      return res.status(400).json({ error: error.issues });
     }
     res.status(403).json({ error: (error as Error).message });
   }
@@ -111,7 +111,7 @@ app.patch("/api/queue/reorder", async (req, res) => {
     res.json(updatedQueue);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.errors });
+      return res.status(400).json({ error: error.issues });
     }
     res.status(500).json({ error: "Failed to reorder" });
   }
@@ -134,6 +134,10 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+export default app;
+
+if (process.env.NODE_ENV !== "test") {
+  app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+  });
+}
