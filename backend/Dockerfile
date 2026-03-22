@@ -1,5 +1,8 @@
 FROM node:21-slim
 
+# Install OpenSSL required by Prisma
+RUN apt-get update -y && apt-get install -y openssl
+
 WORKDIR /app
 
 COPY package.json yarn.lock* ./
