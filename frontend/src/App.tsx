@@ -11,7 +11,7 @@ function App() {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1);
       if (["kiosk", "user", "staff"].includes(hash)) {
-        setView(hash as any);
+        setView(hash as "kiosk" | "user" | "staff");
       } else {
         setView("home");
       }
