@@ -1,8 +1,10 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import { queueService } from "./src/services/queue.service";
-import { PrismaClient } from "@prisma/client";
+import prisma from "./src/lib/prisma";
 
 async function test() {
-  const prisma = new PrismaClient();
   try {
     console.log("Adding entry...");
     const entry = await queueService.addEntry(2, "09012345678");

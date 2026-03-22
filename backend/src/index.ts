@@ -1,10 +1,12 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
 import { z } from "zod";
-import { PrismaClient } from "@prisma/client";
+import prisma from "./lib/prisma";
 import { queueService } from "./services/queue.service";
 
-const prisma = new PrismaClient();
 const app = express();
 const port = process.env.PORT || 3001;
 

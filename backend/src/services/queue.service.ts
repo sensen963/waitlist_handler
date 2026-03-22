@@ -1,32 +1,40 @@
-import { PrismaClient, QueueEntry } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma";
+import { QueueEntry } from "@prisma/client";
 
 export const queueService = {
   async addEntry(peopleCount: number, phoneNumber: string) {
-    const lastEntry = await prisma.queueEntry.findFirst({
-      where: { status: "WAITING" },
-      orderBy: { position: "desc" },
-    });
-    const nextPosition = (lastEntry?.position || 0) + 1;
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const lastEntry = await tx.queueEntry.findFirst({
+          where: { status: "WAITING" },
+          orderBy: { position: "desc" },
+        });
+        const nextPosition = (lastEntry?.position || 0) + 1;
 
-    // Create entry with placeholder ticketNumber
-    const entry = await prisma.queueEntry.create({
-      data: {
-        ticketNumber: `TEMP-${Date.now()}`,
-        peopleCount,
-        phoneNumber,
-        position: nextPosition,
-        status: "WAITING",
-      },
-    });
+        // Use a more unique temp ticket number to avoid collisions
+        const tempId = Math.random().toString(36).substring(7);
+        const entry = await tx.queueEntry.create({
+          data: {
+            ticketNumber: `TEMP-${Date.now()}-${tempId}`,
+            peopleCount,
+            phoneNumber,
+            position: nextPosition,
+            status: "WAITING",
+          },
+        });
 
-    // Update with real ticketNumber
-    const ticketNumber = `T-${entry.id.toString().padStart(3, "0")}`;
-    return await prisma.queueEntry.update({
-      where: { id: entry.id },
-      data: { ticketNumber },
-    });
+        // Update with final ticket number based on incrementing ID
+        const ticketNumber = `T-${entry.id.toString().padStart(3, "0")}`;
+        
+        return await tx.queueEntry.update({
+          where: { id: entry.id },
+          data: { ticketNumber },
+        });
+      });
+    } catch (error) {
+      console.error("Error in addEntry transaction:", error);
+      throw error;
+    }
   },
 
   async getQueue() {
@@ -102,14 +110,18 @@ export const queueService = {
     }
 
     // Update positions in DB
-    const updates = newQueue.map((e, i) =>
-      prisma.queueEntry.update({
-        where: { id: e.id },
-        data: { position: i + 1 },
-      })
-    );
-    await prisma.$transaction(updates);
-
-    return await this.getQueue();
+    return await prisma.$transaction(async (tx) => {
+      const updates = newQueue.map((e, i) =>
+        tx.queueEntry.update({
+          where: { id: e.id },
+          data: { position: i + 1 },
+        })
+      );
+      await Promise.all(updates);
+      return await tx.queueEntry.findMany({
+        where: { status: "WAITING" },
+        orderBy: { position: "asc" },
+      });
+    });
   },
 };
