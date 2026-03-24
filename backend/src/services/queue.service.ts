@@ -81,6 +81,13 @@ export const queueService = {
     });
   },
 
+  async resetQueue() {
+    return await prisma.queueEntry.updateMany({
+      where: { status: "WAITING" },
+      data: { status: "CANCELLED", position: -1 },
+    });
+  },
+
   async deleteEntry(id: number) {
     return await prisma.queueEntry.delete({
       where: { id },
