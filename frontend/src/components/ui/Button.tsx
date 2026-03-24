@@ -9,6 +9,7 @@ function cn(...inputs: ClassValue[]) {
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'outline' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
+  loading?: boolean;
 }
 
 const Button: React.FC<ButtonProps> = ({ 
@@ -16,6 +17,8 @@ const Button: React.FC<ButtonProps> = ({
   className, 
   variant = 'primary', 
   size = 'md', 
+  loading = false,
+  disabled,
   ...props 
 }) => {
   const variants = {
@@ -40,9 +43,10 @@ const Button: React.FC<ButtonProps> = ({
         sizes[size],
         className
       )}
+      disabled={disabled || loading}
       {...props}
     >
-      {children}
+      {loading ? 'Processing...' : children}
     </button>
   );
 };
