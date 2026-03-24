@@ -1,6 +1,6 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useUserStatus } from './useUserStatus';
+import { useUserStatus } from '../../hooks/useUserStatus';
 import axios from 'axios';
 
 // Mock axios

@@ -1,8 +1,8 @@
 import request from "supertest";
-import app from "./index";
-import { queueService } from "./services/queue.service";
+import app from "../index";
+import { queueService } from "../services/queue.service";
 
-jest.mock("./services/queue.service");
+jest.mock("../services/queue.service");
 
 describe("API Integration Tests", () => {
   beforeEach(() => {

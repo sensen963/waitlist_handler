@@ -1,8 +1,8 @@
-import { queueService } from "./queue.service";
-import prisma from "../lib/prisma";
+import { queueService } from "../../services/queue.service";
+import prisma from "../../lib/prisma";
 
 // Mock PrismaClient
-jest.mock("../lib/prisma", () => {
+jest.mock("../../lib/prisma", () => {
   const mockQueueEntry = {
     findFirst: jest.fn(),
     findMany: jest.fn(),
