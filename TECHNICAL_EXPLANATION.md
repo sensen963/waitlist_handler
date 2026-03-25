@@ -222,6 +222,24 @@ RUN apt-get update -y && apt-get install -y openssl
 
 ---
 
+## 11. 待ち状況の計算ロジック（Business Logic）
+
+「何組待ちか」の計算は、シンプルながら正確さが求められるロジックです。
+
+### サーバー側での順序判定
+`backend/src/services/queue.service.ts` では、自分より前に作成された（`createdAt` が古い）チケットの数をカウントしています。
+```typescript
+const count = await prisma.queueEntry.count({
+  where: { createdAt: { lt: entry.createdAt } }
+});
+return { ...entry, groupsAhead: count + 1 };
+```
+**解説**:
+- `lt` (less than): 自分より前の時間。
+- `count + 1`: 自分を含めた順番を返します。これにより、先頭の人は「1組目（1組前）」と表示される仕様を満たしています。
+
+---
+
 ## まとめ
 本プロジェクトは、**「型による保護（TypeScript）」「ロジックの分離（Hooks / Services）」「データの整合性（Transactions）」** という、モダンなWeb開発のベストプラクティスを凝縮した構成になっています。
 コードを読む際は、まず `Interface` でデータの形を理解し、次に `Hooks` でデータの流れを追うのが近道です。
