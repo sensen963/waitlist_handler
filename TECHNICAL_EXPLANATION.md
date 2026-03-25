@@ -147,6 +147,81 @@ className={cn(
 
 ---
 
+## 7. テスト：堅牢なコードの維持 (Vitest / Jest)
+
+### フロントエンド：Vitest と React Testing Library
+`frontend/src/__tests__/hooks/useQueueManagement.test.ts` で見られる、ロジックのテストです。
+```typescript
+it('should fetch queue on mount', async () => {
+  const { result } = renderHook(() => useQueueManagement());
+  // ... 非同期処理の完了を待機して検証
+});
+```
+**解説**:
+- `renderHook`: コンポーネントを作らずにフック単体の動作を確認できます。
+- `vi.mock`: API サーバーなどを偽物（モック）に置き換え、テスト用の固定データを返すようにします。
+
+### バックエンド：Jest と Supertest
+`backend/src/__tests__/api.test.ts` で、実際の HTTP リクエストをシミュレートしています。
+```typescript
+const response = await request(app)
+  .post('/api/queue')
+  .send({ peopleCount: 2, phoneNumber: '090-0000-0000' });
+expect(response.status).toBe(201);
+```
+**解説**: サーバーを実際に起動することなく、コードレベルで API エンドポイントを叩き、レスポンスが正しいか（ステータスコード 201 など）を確認しています。
+
+---
+
+## 8. Docker：一貫した環境での実行
+
+### マルチステージビルド（フロントエンド）
+`frontend/Dockerfile` では、ビルド用と実行用の2つのイメージを使い分けています。
+```dockerfile
+FROM node:21-slim as build # ビルド用（重い）
+...
+FROM nginx:stable-alpine   # 実行用（非常に軽い）
+```
+**解説**: 成果物（`dist` フォルダ）だけを最終的な軽量イメージ（Nginx）にコピーすることで、セキュリティと動作速度を向上させています。
+
+### Prisma とバイナリ依存（バックエンド）
+```dockerfile
+RUN apt-get update -y && apt-get install -y openssl
+```
+**解説**: Prisma などの ORM は、OS ごとに異なる「バイナリ（実行用プログラム）」を必要とします。Docker を使うことで、開発者の PC（Mac や Windows）と本番環境（Linux）での差異をなくし、「手元では動くのに」という問題を防いでいます。
+
+---
+
+## 9. バリデーションと環境整合性（Validation & Environment Integrity）
+
+本プロジェクトでは、開発環境と Docker 環境での不整合を防ぐため、以下の設計を取り入れています。
+
+### スモークテストによる実機検証
+単体テストだけでなく、`docker-compose up` した状態での疎通確認を重視しています。
+- **Prisma 生成**: `npx prisma generate` がコンテナ内で正しく行われるか
+- **DB 書き込み**: SQLite ファイル（`dev.db`）がホスト側と正しく同期されるか
+
+### 依存ライブラリの厳格な管理
+`package.json` で指定したライブラリが、コンテナのベースイメージ（`slim` など）で不足なく動作するように、Dockerfile 内で必要なシステムライブラリ（`openssl` 等）を明示的に追加しています。
+
+---
+
+## 10. ディレクトリ構造：役割の分離
+
+プロジェクトは、関心の分離（Separation of Concerns）に基づき、以下のように整理されています。
+
+### `backend/src/`
+- **`services/`**: ビジネスロジック。DB 操作（Prisma）の詳細はここに集約されます。
+- **`routes/`**: エンドポイント（URL）の定義とバリデーション。
+- **`middleware/`**: 認証やエラー処理の共通フィルタ。
+
+### `frontend/src/`
+- **`components/features/`**: 機能単位（Kiosk, User, Staff）で UI を分割。
+- **`hooks/`**: コンポーネントからロジックを切り出したカスタムフック。
+- **`api/`**: サーバーとの通信（Axios）を定義。
+
+---
+
 ## まとめ
 本プロジェクトは、**「型による保護（TypeScript）」「ロジックの分離（Hooks / Services）」「データの整合性（Transactions）」** という、モダンなWeb開発のベストプラクティスを凝縮した構成になっています。
 コードを読む際は、まず `Interface` でデータの形を理解し、次に `Hooks` でデータの流れを追うのが近道です。
