@@ -43,19 +43,24 @@ export const useKiosk = () => {
       fetchStats();
     } catch (error: unknown) {
       const errorData = (error as AxiosError).response?.data?.error;
-      const errorMsg = Array.isArray(errorData) 
-        ? errorData.map((i: { message: string }) => i.message).join(', ')
-        : (errorData || 'Failed to issue ticket');
+      let errorMsg = 'Failed to issue ticket';
+      
+      if (Array.isArray(errorData)) {
+        errorMsg = errorData.map((i: { message: string }) => i.message).join(', ');
+      } else if (typeof errorData === 'string') {
+        errorMsg = errorData;
+      }
+      
       setMessage({ text: errorMsg, type: 'error' });
     } finally {
       setLoading(false);
     }
   };
 
-  const cancelTicket = async (ticketNumber: string, phoneNumber: string) => {
+  const cancelTicket = async (ticketNumber: string, phoneNumber: string): Promise<boolean> => {
     if (!ticketNumber || !phoneNumber) {
       setMessage({ text: 'Please enter ticket and phone number', type: 'error' });
-      return;
+      return false;
     }
     setLoading(true);
     try {
@@ -64,7 +69,9 @@ export const useKiosk = () => {
       fetchStats();
       return true;
     } catch (error: unknown) {
-      setMessage({ text: (error as AxiosError).response?.data?.error || 'Failed to cancel entry', type: 'error' });
+      const errorData = (error as AxiosError).response?.data?.error;
+      const errorMsg = typeof errorData === 'string' ? errorData : 'Failed to cancel entry';
+      setMessage({ text: errorMsg, type: 'error' });
       return false;
     } finally {
       setLoading(false);

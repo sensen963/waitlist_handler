@@ -33,9 +33,14 @@ export const useUserStatus = () => {
       setEntry(data);
     } catch (error: unknown) {
       const errorData = (error as AxiosError).response?.data?.error;
-      const errorMsg = Array.isArray(errorData)
-        ? errorData.map((i: { message: string }) => i.message).join(', ')
-        : (errorData || 'Ticket not found');
+      let errorMsg = 'Ticket not found';
+      
+      if (Array.isArray(errorData)) {
+        errorMsg = errorData.map((i: { message: string }) => i.message).join(', ');
+      } else if (typeof errorData === 'string') {
+        errorMsg = errorData;
+      }
+      
       setMessage({ text: errorMsg, type: 'error' });
       setEntry(null);
     } finally {
@@ -43,7 +48,7 @@ export const useUserStatus = () => {
     }
   };
 
-  const cancelPosition = async (phoneNumber: string) => {
+  const cancelPosition = async (phoneNumber: string): Promise<boolean> => {
     if (!phoneNumber) {
       setMessage({ text: 'Please enter your phone number', type: 'error' });
       return false;
@@ -56,9 +61,14 @@ export const useUserStatus = () => {
       return true;
     } catch (error: unknown) {
       const errorData = (error as AxiosError).response?.data?.error;
-      const errorMsg = Array.isArray(errorData)
-        ? errorData.map((i: { message: string }) => i.message).join(', ')
-        : (errorData || 'Failed to cancel');
+      let errorMsg = 'Failed to cancel';
+      
+      if (Array.isArray(errorData)) {
+        errorMsg = errorData.map((i: { message: string }) => i.message).join(', ');
+      } else if (typeof errorData === 'string') {
+        errorMsg = errorData;
+      }
+      
       setMessage({ text: errorMsg, type: 'error' });
       return false;
     } finally {

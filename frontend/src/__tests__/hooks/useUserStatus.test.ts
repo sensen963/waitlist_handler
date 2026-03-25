@@ -1,11 +1,11 @@
 import { renderHook, waitFor, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, Mocked } from 'vitest';
 import { useUserStatus } from '../../hooks/useUserStatus';
 import axios from 'axios';
 
 // Mock axios
 vi.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+const mockedAxios = axios as Mocked<typeof axios>;
 
 describe('useUserStatus Hook', () => {
   beforeEach(() => {
