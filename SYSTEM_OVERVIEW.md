@@ -19,146 +19,222 @@
 リファクタリングにより、関心の分離（Separation of Concerns）を徹底したレイヤー構造を採用しています。
 
 ### 1. フロントエンド (Frontend)
-
-**ディレクトリ構成:** `frontend/src/`
-- **Pages**: ルーティングに対応する各画面の宣言的な定義。
-- **Hooks**: ビジネスロジック、API呼び出し、状態管理をカプセル化。
-- **Components**:
-    - **features**: 各機能に特化したUIコンポーネント。
-    - **ui**: ボタンやインプットなど、再利用可能な基本部品。
-- **API Client**: バックエンドAPIとの通信（Axiosベース）を担当。
-
-**技術的特徴:**
-- カスタムフック (`useKiosk`, `useUserStatus`, `useQueueManagement`) によるロジックの共通化とテスト性の向上。
-- React Testing Library + Vitest による包括的なテスト（20個以上のテストケース）。
+- **Pages**: 画面単位のコンポーネント。
+- **Hooks**: ロジック、API呼び出し、状態管理のカプセル化。
+- **Components**: 機能部品 (`features/`) と 共通部品 (`ui/`)。
+- **API**: バックエンドとの通信 (Axios)。
 
 ### 2. バックエンド (Backend)
-
-**ディレクトリ構成:** `backend/src/`
-- **Routes**: エンドポイントの定義とZodによる入力バリデーション、エラーミドルウェアへの橋渡し。
-- **Services**: ビジネスロジックの実装（DBトランザクション、順序計算など）。
-- **Middleware**: 共通処理（一貫したエラーハンドリングミドルウェアなど）。
-- **Lib**: 共通ライブラリ（Prisma Clientのシングルトンインスタンスなど）。
-
-**技術的特徴:**
-- レイヤー分離により、APIのインターフェース変更とビジネスロジックの変更を独立して実施可能。
-- Jest によるユニット/インテグレーションテスト（14個のテストケース）。
+- **Routes**: エンドポイント定義とバリデーション。
+- **Services**: ビジネスロジックとDB操作。
+- **Middleware**: 共通処理（エラーハンドリング等）。
 
 ---
 
 ## システムの主要コンポーネントと役割
 
 ### 1. 待ち列作成機 (Kiosk / Queue Creator)
-
 **役割**
-- 店舗入口に置かれるインターフェース。
-- 利用者が人数と電話番号を入力してチケットを発券。
+- 店舗入口に置かれるインターフェース。利用者が人数と電話番号を入力してチケットを発券。
 - 発券されたチケットにはQRコード（URL）が含まれる。
-- チケット番号と電話番号によるキャンセル機能を提供。
-- 現在の総待ち組数を表示。
-
+- チケット番号と電話番号によるキャンセル機能を提供。現在の総待ち組数を表示。
 **技術的実装**
 - クライアント側: `KioskPage.tsx`, `useKiosk.ts`
 - サーバー側: `queue.routes.ts` (`POST /api/queue`), `queue.service.ts` (`addEntry`)
 
 ### 2. 利用ユーザー画面 (User Dashboard)
-
 **役割**
-- チケットのQRコードをスキャンしてアクセスするページ。
+- チケットのQRコードをスキャンしてアクセス。
 - 自分の待ち列の位置（自分を含めた前方の組数）を表示。
-- 自分のチケットのみキャンセル可能（チケット番号 + 電話番号認証）。
-- 他の利用者の待ち列は操作不可。
-
+- 自分のチケットのみキャンセル可能（電話番号認証）。
 **技術的実装**
 - クライアント側: `UserPage.tsx`, `useUserStatus.ts`
-- サーバー側: `queue.routes.ts` (`GET /status/:ticketNumber`), `queue.service.ts` (`getStatusByTicket`)
+- サーバー側: `queue.routes.ts` (`GET /status/:ticketNumber`)
 
 ### 3. 店舗オペレーション画面 (Staff Dashboard)
-
 **役割**
-- 店舗スタッフが待ち列の一覧を表示・管理。
-- 案内済みの組を削除（Serve処理）。
+- 店舗スタッフが待ち列の一覧を表示・管理。案内済みの組を削除。
 - オペレーションミス対策で以下の操作が可能：
-  - 待ちを順位の上げ下げで移動 (UP/DOWN)。
-  - 待ちを最上部に移動 (TOP / 割り込み対応用)。
-  - 待ちを最下部に移動 (BOTTOM)。
-  - 任意の待ちを削除。
-- 営業終了時の全データリセット（Reset Day）。
-
+  - 順位の上げ下げ (UP/DOWN)、最上部/最下部移動 (TOP/BOTTOM)、任意の待ちを削除。
+  - 営業終了時の全データリセット。
 **技術的実装**
 - クライアント側: `StaffPage.tsx`, `useQueueManagement.ts`
-- サーバー側: `queue.routes.ts` (`PATCH /reorder`, `POST /reset`), `queue.service.ts` (`reorder`, `resetQueue`)
+- サーバー側: `queue.routes.ts` (`PATCH /reorder`, `POST /reset`)
+
+### 4. サーバー (Backend / API Server)
+**役割**
+- クライアントからのリクエストを処理。データベースとのやり取りを担当。
+- RESTful APIを提供し、ビジネスロジックを `queue.service.ts` に集約。
+**主要なAPI エンドポイント:**
+- `GET /api/queue/stats` - 総待ち組数取得
+- `POST /api/queue` - チケット作成
+- `GET /api/queue` - 待ち列一覧取得
+- `GET /api/queue/status/:ticketNumber` - チケット情報取得
+- `DELETE /api/queue/cancel` - チケットキャンセル
+- `DELETE /api/queue/:id` - 案内完了（削除）
+- `PATCH /api/queue/reorder` - 順位変更
+- `POST /api/queue/reset` - 全データクリア
+
+### 5. データベース (DB)
+**役割**
+- 待ち列データの永続化。`QueueEntry` テーブルに以下の情報を保存：
+  - `ticketNumber`, `peopleCount`, `phoneNumber`, `position`, `status` (WAITING, SERVED, CANCELLED), `createdAt`
+**技術的役割**
+- SQLiteを使用。Prisma ORMで抽象化され、マイグレーション機能あり。
+
+### 6. Docker (インフラ)
+**役割**
+- サーバー、DB、クライアントを統合。開発/本番環境を統一。
+- ポート: バックエンド(3001), フロントエンド(8080)。ボリュームマウントによりDBを永続化。
 
 ---
 
-## データベース (Database)
-
-**役割**: 待ち列のデータを永続化し、チケット情報を保存。
-
-**主なフィールド (QueueEntryテーブル):**
-- `id`: 内部管理用自動増分ID。
-- `ticketNumber`: 利用者向けチケット番号 (例: T-001)。
-- `peopleCount`: 利用人数。
-- `phoneNumber`: キャンセル認証用の電話番号（完全一致で検証）。
-- `position`: 待ち列内の順序（1から始まる整数）。
-- `status`: 状態 (`WAITING`, `SERVED`, `CANCELLED`)。
-- `createdAt`: 発券日時。
-
----
-
-## データフローとシーケンス
-
-### 1. チケット発券フロー
+## 依存関係の概要
 
 ```mermaid
-sequenceDiagram
-    participant U as 利用者
-    participant K as KioskPage (Hooks)
-    participant R as Queue Routes
-    participant S as Queue Service
-    participant DB as SQLite (Prisma)
+graph TD
+    subgraph "Frontend (React)"
+        P[Pages] --> H[Hooks]
+        H --> C[Components]
+        H --> A[API Client]
+    end
 
-    U->>K: 人数・電話番号入力
-    K->>R: POST /api/queue
-    R->>S: addEntry(peopleCount, phone)
-    S->>DB: トランザクション開始
-    DB-->>S: 位置計算 + INSERT
-    S->>DB: チケット番号(T-xxx)更新
-    DB-->>S: 成功
-    S-->>R: チケットデータ
-    R-->>K: 201 Created
-    K-->>U: チケット発券 (QRコード表示)
+    subgraph "Backend (Express)"
+        R[Routes] --> S[Services]
+        R --> M[Middleware]
+        S --> DB[(SQLite / Prisma)]
+    end
+
+    A -- "HTTP / REST API" --> R
 ```
 
-### 2. 待ち状況確認・キャンセルフロー
+**詳細な依存関係:**
+- **クライアント**: サーバーAPIに依存。HooksがAPIレスポンスを受け取り、ステートを更新してUIを再レンダリングします。
+- **サーバー**: DBに依存。ServicesがDBからデータを取得/保存し、トランザクションで整合性を保証します。
+- **DB**: サーバーからのクエリに依存。独立したデータストア。
+- **全体**: Dockerが各コンポーネントのネットワーク接続とボリュームマウントを解決します。
+
+---
+
+## データフロー
+
+### 1. チケット発券フロー
+1. 客が人数・電話番号を入力。
+2. `useKiosk` -> `POST /api/queue` へリクエスト送信。
+3. サーバーがトランザクション内で位置計算とインサートを実行。
+4. 生成されたチケット情報（QR URL含む）を返却し、画面に表示。
+
+### 2. 待ち状況確認フロー
+1. 客がQRコードをスキャンしてアクセス。
+2. `useUserStatus` -> `GET /status/:ticketNumber` へ自動取得。
+3. サーバーが自分を含めた前方の `WAITING` 数を計算。
+4. 待ち組数を画面に表示。
+
+### 3. キャンセルフロー
+1. 客がキャンセルを選択し、電話番号を入力。
+2. `useUserStatus` -> `DELETE /api/queue/cancel` へ認証情報と共に送信。
+3. サーバーが電話番号を照合し、一致すれば `status` を `CANCELLED` に更新。
+4. キャンセル完了メッセージを表示。
+
+### 4. 店舗オペレーションフロー
+1. スタッフが `StaffPage` にアクセス。
+2. `useQueueManagement` -> `GET /api/queue` から一覧を取得。
+3. 操作（削除/移動等）に応じて `PATCH /reorder` 等を呼び出し。
+4. DB更新後、最新の待ち列を再取得して表示を更新。
+
+---
+
+## システム構成図 (詳細)
+
+```mermaid
+flowchart TD
+    subgraph "クライアント層 (Frontend)"
+        K[KioskPage<br/>Hooks: useKiosk]
+        U[UserPage<br/>Hooks: useUserStatus]
+        S[StaffPage<br/>Hooks: useQueueManagement]
+    end
+
+    subgraph "サーバー層 (Backend)"
+        API[Queue Routes<br/>Zod Validation]
+        QS[Queue Service<br/>Business Logic]
+        MW[Error Middleware<br/>Global Handling]
+    end
+
+    subgraph "データ層"
+        DB[(SQLite<br/>Prisma ORM)]
+    end
+
+    subgraph "インフラ層"
+        D[Docker Compose<br/>Environment Isolation]
+    end
+
+    K --> API
+    U --> API
+    S --> API
+    API --> QS
+    API --> MW
+    QS --> DB
+    D --> K
+    D --> U
+    D --> S
+    D --> API
+    D --> DB
+
+    classDef frontend fill:#e1f5fe
+    classDef backend fill:#f3e5f5
+    classDef data fill:#fff3e0
+    classDef infra fill:#e8f5e8
+
+    class K,U,S frontend
+    class API,QS,MW backend
+    class DB data
+    class D infra
+```
+
+---
+
+## データシーケンス図 (全体)
 
 ```mermaid
 sequenceDiagram
     participant U as 利用者
+    participant K as Kiosk (Hooks)
     participant UP as UserPage (Hooks)
-    participant R as Queue Routes
-    participant S as Queue Service
-    participant DB as SQLite (Prisma)
+    participant S as Server (Routes/Service)
+    participant DB as Database
+    participant OD as Staff (Hooks)
 
-    U->>UP: QRスキャンでアクセス
-    UP->>R: GET /status/:ticketNumber
-    R->>S: getStatusByTicket(ticketNumber)
-    S->>DB: 位置計算 (前面のWAITING数)
-    DB-->>S: 待ちデータ
-    S-->>R: 順位データ (groupsAhead含む)
-    R-->>UP: 200 OK
-    UP-->>U: 待ち状況表示
-
-    U->>UP: キャンセル実行 (電話番号入力)
-    UP->>R: DELETE /api/queue/cancel
-    R->>S: cancelEntry(ticketNumber, phone)
-    S->>DB: 電話番号マッチング確認
-    DB-->>S: 一致
-    S->>DB: statusをCANCELLEDに更新
+    Note over U,K: チケット発券
+    U->>K: 人数・電話番号入力
+    K->>S: POST /api/queue
+    S->>DB: INSERT (Transaction)
     DB-->>S: 成功
-    S-->>R: 成功レスポンス
-    R-->>UP: 200 OK
-    UP-->>U: キャンセル完了表示
+    S-->>K: チケット情報返却
+    K-->>U: 発券 (QRコード)
+
+    Note over U,UP: 待ち状況確認
+    U->>UP: アクセス
+    UP->>S: GET /status/:ticketNumber
+    S->>DB: 位置計算クエリ
+    DB-->>S: 順位データ
+    S-->>UP: 待ち組数表示
+
+    Note over U,UP: キャンセル
+    U->>UP: キャンセル実行 (電話番号入力)
+    UP->>S: DELETE /api/queue/cancel
+    S->>DB: 電話番号照合・更新
+    DB-->>S: 成功
+    S-->>UP: 完了通知
+
+    Note over OD: 店舗管理
+    OD->>S: GET /api/queue
+    S->>DB: 全チケットクエリ
+    DB-->>S: 一覧データ
+    S-->>OD: 一覧表示
+    OD->>S: PATCH /reorder (移動リクエスト)
+    S->>DB: 順序更新 (Transaction)
+    DB-->>S: 成功
+    S-->>OD: 更新完了表示
 ```
 
 ---
@@ -185,28 +261,43 @@ stateDiagram-v2
 - `frontend/src/__tests__/`: Hooks, UIコンポーネントのテスト。
 - `backend/src/__tests__/`: Services, APIエンドポイントのテスト。
 
-**主なテストカテゴリ:**
-- **Hooks テスト (Vitest)**: API通信、状態遷移、エラーハンドリングの検証。
-- **UI テスト (React Testing Library)**: ボタン、入力フォームの挙動、アクセシビリティ。
-- **Service テスト (Jest)**: DBトランザクションの整合性、ビジネスロジック（順序変更、認証）の正確性。
-- **Integration テスト (Supertest)**: ルーティング、バリデーション、エラーミドルウェアの連動確認。
+**検証範囲:**
+- **Hooks**: APIレスポンスに基づいた状態遷移、ローディング、エラーハンドリング。
+- **UI**: ユーザーイベント（クリック、入力）の正確な発火とレンダリング。
+- **Service**: DBトランザクション整合性、順序変更ロジック。
+- **Integration**: ルーティング、Zodバリデーション、エラーミドルウェアの連動。
 
 ---
 
 ## セキュリティと認証
 
 ### チケット認証
-- **方式**: チケット番号 + 電話番号マッチングによる軽量認証。
-- **対象**: 利用ユーザーのキャンセル機能のみ。
-- **実装**: `queueService` 内で `phoneNumber` の完全一致を検証。
+- **方式**: チケット番号 + 電話番号マッチング。利用者のキャンセル機能のみに適用。
+- **実装**: `queueService` 内で電話番号の完全一致を検証。
 
 ### スタッフ画面
-- **認証**: 現状なし（オープンアクセス、信頼できるローカルネットワーク内での使用を想定）。
+- **認証**: なし（オープンアクセス）。信頼できるローカルネットワーク内での使用を想定。
 
 ---
 
-## デプロイと運用
+## リアルタイム性とスケーラビリティ
 
-- **Docker Compose**: `docker-compose.yml` により、バックエンド、フロントエンド、DBを一括で起動。
-- **Prisma Migration**: `npx prisma db push` により、スキーマ変更を自動的にSQLite DBに適用。
-- **ボリュームマウント**: `dev.db` をホストマシンにマウントし、コンテナ再起動時もデータを永続化。
+- **リアルタイム性**: 現在は手動リロードまたは Hooks 内のインターバル（10秒/5秒）によるポーリングで更新。
+- **DB拡張性**: Prisma を通じて PostgreSQL 等への移行が可能。
+- **店舗拡張**: データベースに `storeId` を導入することで多店舗展開に対応可能。
+
+---
+
+## 営業終了時の処理
+
+- **リセット処理**: スタッフ画面の「Reset Day」ボタンにより、全待機データを `CANCELLED` に更新。
+- **将来像**: バッチ処理（Cronジョブ）による深夜の自動クリアを想定。
+
+---
+
+## 次のステップ
+
+1. ユニットテスト・統合テストの拡充 (継続中)
+2. UI/UXの洗練とモバイル最適化
+3. WebSocket 導入による完全リアルタイム更新の検討
+4. スタッフ画面への認証 (JWT/Session) 追加
