@@ -3,6 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import Button from '../../ui/Button';
 import Card from '../../ui/Card';
 import { QueueEntry } from '../../../api/queue';
+import { buildTicketStatusUrl } from '../../../lib/ticketLocation';
 
 interface TicketResultProps {
   ticket: QueueEntry;
@@ -10,11 +11,6 @@ interface TicketResultProps {
 }
 
 const TicketResult: React.FC<TicketResultProps> = ({ ticket, onDone }) => {
-  const getTicketUrl = (ticketNumber: string) => {
-    const baseUrl = window.location.origin + window.location.pathname;
-    return `${baseUrl}#user?t=${ticketNumber}`;
-  };
-
   return (
     <Card variant="success" className="max-w-md mx-auto text-center animate-in fade-in duration-500">
       <h3 className="text-2xl font-bold text-green-600 mb-4">Ticket Issued!</h3>
@@ -23,7 +19,7 @@ const TicketResult: React.FC<TicketResultProps> = ({ ticket, onDone }) => {
       
       <div className="flex justify-center mb-6">
         <div className="p-4 bg-white border-2 border-gray-100 rounded-lg shadow-inner">
-          <QRCodeSVG value={getTicketUrl(ticket.ticketNumber)} size={120} />
+          <QRCodeSVG value={buildTicketStatusUrl(ticket.ticketNumber, window.location)} size={120} />
         </div>
       </div>
       

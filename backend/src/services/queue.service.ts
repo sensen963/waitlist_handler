@@ -1,34 +1,34 @@
 import prisma from "../lib/prisma";
-import { QueueEntry } from "@prisma/client";
+import { randomUUID } from "crypto";
+
+const STATUS = {
+  WAITING: "WAITING",
+  SERVED: "SERVED",
+  CANCELLED: "CANCELLED",
+} as const;
 
 export const queueService = {
   async addEntry(peopleCount: number, phoneNumber: string) {
     try {
       return await prisma.$transaction(async (tx) => {
-        const lastEntry = await tx.queueEntry.findFirst({
-          where: { status: "WAITING" },
-          orderBy: { position: "desc" },
-        });
-        const nextPosition = (lastEntry?.position || 0) + 1;
-
-        // Use a more unique temp ticket number to avoid collisions
-        const tempId = Math.random().toString(36).substring(7);
         const entry = await tx.queueEntry.create({
           data: {
-            ticketNumber: `TEMP-${Date.now()}-${tempId}`,
+            ticketNumber: `TEMP-${randomUUID()}`,
             peopleCount,
             phoneNumber,
-            position: nextPosition,
-            status: "WAITING",
+            position: null,
+            status: STATUS.WAITING,
           },
         });
 
-        // Update with final ticket number based on incrementing ID
         const ticketNumber = `T-${entry.id.toString().padStart(3, "0")}`;
         
         return await tx.queueEntry.update({
           where: { id: entry.id },
-          data: { ticketNumber },
+          data: {
+            ticketNumber,
+            position: entry.id,
+          },
         });
       });
     } catch (error) {
@@ -39,7 +39,7 @@ export const queueService = {
 
   async getQueue() {
     return await prisma.queueEntry.findMany({
-      where: { status: "WAITING" },
+      where: { status: STATUS.WAITING },
       orderBy: { position: "asc" },
     });
   },
@@ -48,16 +48,21 @@ export const queueService = {
     const entry = await prisma.queueEntry.findUnique({
       where: { ticketNumber },
     });
-    if (!entry || entry.status !== "WAITING") return null;
+    if (!entry || entry.status !== STATUS.WAITING || entry.position == null) return null;
 
-    const allWaiting = await this.getQueue();
-    const groupsAhead = allWaiting.findIndex((e) => e.ticketNumber === ticketNumber) + 1;
+    const groupsAhead = await prisma.queueEntry.count({
+      where: {
+        status: STATUS.WAITING,
+        position: { lte: entry.position },
+      },
+    });
+
     return { ...entry, groupsAhead };
   },
 
   async getTotalWaiting() {
     return await prisma.queueEntry.count({
-      where: { status: "WAITING" },
+      where: { status: STATUS.WAITING },
     });
   },
 
@@ -70,21 +75,21 @@ export const queueService = {
     }
     return await prisma.queueEntry.update({
       where: { ticketNumber },
-      data: { status: "CANCELLED", position: -1 },
+      data: { status: STATUS.CANCELLED, position: null },
     });
   },
 
   async serveEntry(id: number) {
     return await prisma.queueEntry.update({
       where: { id },
-      data: { status: "SERVED", position: -1 },
+      data: { status: STATUS.SERVED, position: null },
     });
   },
 
   async resetQueue() {
     return await prisma.queueEntry.updateMany({
-      where: { status: "WAITING" },
-      data: { status: "CANCELLED", position: -1 },
+      where: { status: STATUS.WAITING },
+      data: { status: STATUS.CANCELLED, position: null },
     });
   },
 
@@ -126,7 +131,7 @@ export const queueService = {
       );
       await Promise.all(updates);
       return await tx.queueEntry.findMany({
-        where: { status: "WAITING" },
+        where: { status: STATUS.WAITING },
         orderBy: { position: "asc" },
       });
     });

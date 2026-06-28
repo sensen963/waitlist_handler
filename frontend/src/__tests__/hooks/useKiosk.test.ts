@@ -33,7 +33,7 @@ describe('useKiosk Hook', () => {
       id: 1,
       ticketNumber: 'T-001',
       peopleCount: 2,
-      status: 'WAITING',
+      status: 'WAITING' as const,
       position: 6,
       createdAt: new Date().toISOString()
     };
@@ -87,5 +87,27 @@ describe('useKiosk Hook', () => {
       expect.stringContaining('/queue/cancel'),
       expect.objectContaining({ data: { ticketNumber: 'T-001', phoneNumber: '09012345678' } })
     );
+  });
+
+  it('handles structured validation errors during cancellation', async () => {
+    mockedAxios.get.mockResolvedValue({ data: { totalWaiting: 5 } });
+    mockedAxios.delete.mockRejectedValueOnce({
+      response: {
+        data: {
+          error: {
+            message: 'Request validation failed',
+            details: [{ message: 'Phone number must be 10-11 digits or a hyphenated number' }]
+          }
+        }
+      }
+    });
+
+    const { result } = renderHook(() => useKiosk());
+
+    await act(async () => {
+      await result.current.cancelTicket('T-001', 'invalid');
+    });
+
+    expect(result.current.message.text).toBe('Phone number must be 10-11 digits or a hyphenated number');
   });
 });

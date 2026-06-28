@@ -2,12 +2,14 @@ import axios from "axios";
 
 const API_BASE_URL = "http://localhost:3001/api";
 
+export type QueueStatus = 'WAITING' | 'SERVED' | 'CANCELLED';
+
 export interface QueueEntry {
   id: number;
   ticketNumber: string;
   peopleCount: number;
-  status: string;
-  position: number;
+  status: QueueStatus;
+  position: number | null;
   groupsAhead?: number;
   createdAt: string;
 }
