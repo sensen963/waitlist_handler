@@ -27,9 +27,8 @@ describe("queueService", () => {
 
   describe("addEntry", () => {
     it("should add a new entry with correct position and ticket number", async () => {
-      (prisma.queueEntry.findFirst as jest.Mock).mockResolvedValue({ position: 5 });
-      (prisma.queueEntry.create as jest.Mock).mockResolvedValue({ id: 42, position: 6 });
-      (prisma.queueEntry.update as jest.Mock).mockResolvedValue({ id: 42, ticketNumber: "T-042", position: 6 });
+      (prisma.queueEntry.create as jest.Mock).mockResolvedValue({ id: 42, position: null });
+      (prisma.queueEntry.update as jest.Mock).mockResolvedValue({ id: 42, ticketNumber: "T-042", position: 42 });
 
       const result = await queueService.addEntry(2, "09012345678");
 
@@ -37,8 +36,15 @@ describe("queueService", () => {
         data: expect.objectContaining({
           peopleCount: 2,
           phoneNumber: "09012345678",
-          position: 6,
+          position: null,
           status: "WAITING",
+        }),
+      }));
+      expect(prisma.queueEntry.update).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: 42 },
+        data: expect.objectContaining({
+          ticketNumber: "T-042",
+          position: 42,
         }),
       }));
       expect(result.ticketNumber).toBe("T-042");
@@ -47,23 +53,37 @@ describe("queueService", () => {
 
   describe("getStatusByTicket", () => {
     it("should return the entry with correct groupsAhead count", async () => {
-      const mockQueue = [
-        { id: 1, ticketNumber: "T-001", status: "WAITING" },
-        { id: 2, ticketNumber: "T-002", status: "WAITING" },
-        { id: 3, ticketNumber: "T-003", status: "WAITING" },
-      ];
-      (prisma.queueEntry.findUnique as jest.Mock).mockResolvedValue(mockQueue[1]); // User is T-002
-      (prisma.queueEntry.findMany as jest.Mock).mockResolvedValue(mockQueue);
+      const mockEntry = { id: 2, ticketNumber: "T-002", status: "WAITING", position: 7 };
+      (prisma.queueEntry.findUnique as jest.Mock).mockResolvedValue(mockEntry);
+      (prisma.queueEntry.count as jest.Mock).mockResolvedValue(2);
 
       const result = await queueService.getStatusByTicket("T-002");
 
       expect(result).not.toBeNull();
       expect(result?.groupsAhead).toBe(2); // T-001, T-002
+      expect(prisma.queueEntry.count).toHaveBeenCalledWith({
+        where: {
+          status: "WAITING",
+          position: { lte: 7 },
+        },
+      });
     });
 
     it("should return null if ticket does not exist", async () => {
       (prisma.queueEntry.findUnique as jest.Mock).mockResolvedValue(null);
       const result = await queueService.getStatusByTicket("T-999");
+      expect(result).toBeNull();
+    });
+
+    it("should return null if waiting entry has no active position", async () => {
+      (prisma.queueEntry.findUnique as jest.Mock).mockResolvedValue({
+        ticketNumber: "T-002",
+        status: "WAITING",
+        position: null,
+      });
+
+      const result = await queueService.getStatusByTicket("T-002");
+
       expect(result).toBeNull();
     });
   });
@@ -80,7 +100,7 @@ describe("queueService", () => {
 
       expect(prisma.queueEntry.update).toHaveBeenCalledWith(expect.objectContaining({
         where: { ticketNumber: "T-001" },
-        data: expect.objectContaining({ status: "CANCELLED" }),
+        data: expect.objectContaining({ status: "CANCELLED", position: null }),
       }));
     });
 

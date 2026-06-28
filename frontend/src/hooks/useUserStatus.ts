@@ -1,13 +1,7 @@
 import { useState, useEffect } from 'react';
 import { queueApi, QueueEntry } from '../api/queue';
-
-interface AxiosError {
-  response?: {
-    data?: {
-      error?: unknown;
-    };
-  };
-}
+import { extractApiErrorMessage } from '../api/error';
+import { getTicketNumberFromLocation } from '../lib/ticketLocation';
 
 export const useUserStatus = () => {
   const [ticketNumber, setTicketNumber] = useState('');
@@ -16,9 +10,7 @@ export const useUserStatus = () => {
   const [message, setMessage] = useState({ text: '', type: '' });
 
   useEffect(() => {
-    const hash = window.location.hash;
-    const params = new URLSearchParams(hash.split('?')[1]);
-    const t = params.get('t');
+    const t = getTicketNumberFromLocation(window.location);
     if (t) {
       setTicketNumber(t);
       fetchStatus(t);
@@ -32,16 +24,7 @@ export const useUserStatus = () => {
       const data = await queueApi.getStatus(t);
       setEntry(data);
     } catch (error: unknown) {
-      const errorData = (error as AxiosError).response?.data?.error;
-      let errorMsg = 'Ticket not found';
-      
-      if (Array.isArray(errorData)) {
-        errorMsg = errorData.map((i: { message: string }) => i.message).join(', ');
-      } else if (typeof errorData === 'string') {
-        errorMsg = errorData;
-      }
-      
-      setMessage({ text: errorMsg, type: 'error' });
+      setMessage({ text: extractApiErrorMessage(error, 'Ticket not found'), type: 'error' });
       setEntry(null);
     } finally {
       setLoading(false);
@@ -60,16 +43,7 @@ export const useUserStatus = () => {
       setEntry(null);
       return true;
     } catch (error: unknown) {
-      const errorData = (error as AxiosError).response?.data?.error;
-      let errorMsg = 'Failed to cancel';
-      
-      if (Array.isArray(errorData)) {
-        errorMsg = errorData.map((i: { message: string }) => i.message).join(', ');
-      } else if (typeof errorData === 'string') {
-        errorMsg = errorData;
-      }
-      
-      setMessage({ text: errorMsg, type: 'error' });
+      setMessage({ text: extractApiErrorMessage(error, 'Failed to cancel'), type: 'error' });
       return false;
     } finally {
       setLoading(false);

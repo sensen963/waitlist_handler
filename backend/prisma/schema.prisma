@@ -13,7 +13,9 @@ model QueueEntry {
   peopleCount  Int
   phoneNumber  String
   status       String   @default("WAITING")
-  position     Int
+  position     Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  @@index([status, position])
 }

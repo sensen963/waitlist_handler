@@ -10,8 +10,7 @@ const mockedAxios = axios as Mocked<typeof axios>;
 describe('useUserStatus Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Clear URL hash before each test
-    window.location.hash = '';
+    window.history.pushState({}, '', '/');
   });
 
   it('reads ticket number from URL hash on mount', async () => {
@@ -24,6 +23,18 @@ describe('useUserStatus Hook', () => {
     await waitFor(() => {
       expect(result.current.entry).not.toBeNull();
       expect(result.current.entry?.groupsAhead).toBe(3);
+    });
+  });
+
+  it('reads ticket number from query string on mount', async () => {
+    window.history.pushState({}, '', '/?t=T-777#user');
+    mockedAxios.get.mockResolvedValueOnce({ data: { ticketNumber: 'T-777', groupsAhead: 1 } });
+
+    const { result } = renderHook(() => useUserStatus());
+
+    await waitFor(() => {
+      expect(result.current.ticketNumber).toBe('T-777');
+      expect(result.current.entry?.ticketNumber).toBe('T-777');
     });
   });
 
@@ -63,7 +74,7 @@ describe('useUserStatus Hook', () => {
 
   it('handles error when fetching status', async () => {
     mockedAxios.get.mockRejectedValueOnce({
-      response: { data: { error: 'Ticket not found' } }
+      response: { data: { error: { code: 'TICKET_NOT_FOUND', message: 'Ticket not found' } } }
     });
 
     const { result } = renderHook(() => useUserStatus());

@@ -1,13 +1,6 @@
 import { useState, useEffect } from 'react';
 import { queueApi, QueueEntry } from '../api/queue';
-
-interface AxiosError {
-  response?: {
-    data?: {
-      error?: unknown;
-    };
-  };
-}
+import { extractApiErrorMessage } from '../api/error';
 
 export const useKiosk = () => {
   const [totalWaiting, setTotalWaiting] = useState(0);
@@ -42,16 +35,7 @@ export const useKiosk = () => {
       setIssuedTicket(ticket);
       fetchStats();
     } catch (error: unknown) {
-      const errorData = (error as AxiosError).response?.data?.error;
-      let errorMsg = 'Failed to issue ticket';
-      
-      if (Array.isArray(errorData)) {
-        errorMsg = errorData.map((i: { message: string }) => i.message).join(', ');
-      } else if (typeof errorData === 'string') {
-        errorMsg = errorData;
-      }
-      
-      setMessage({ text: errorMsg, type: 'error' });
+      setMessage({ text: extractApiErrorMessage(error, 'Failed to issue ticket'), type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -69,9 +53,7 @@ export const useKiosk = () => {
       fetchStats();
       return true;
     } catch (error: unknown) {
-      const errorData = (error as AxiosError).response?.data?.error;
-      const errorMsg = typeof errorData === 'string' ? errorData : 'Failed to cancel entry';
-      setMessage({ text: errorMsg, type: 'error' });
+      setMessage({ text: extractApiErrorMessage(error, 'Failed to cancel entry'), type: 'error' });
       return false;
     } finally {
       setLoading(false);

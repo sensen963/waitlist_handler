@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { queueApi, QueueEntry } from '../api/queue';
+import { extractApiErrorMessage } from '../api/error';
 
 export const useQueueManagement = () => {
   const [queue, setQueue] = useState<QueueEntry[]>([]);
@@ -25,9 +26,8 @@ export const useQueueManagement = () => {
     try {
       await queueApi.serveEntry(id);
       fetchQueue();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (_error) {
-      alert('Failed to serve entry');
+    } catch (error) {
+      alert(extractApiErrorMessage(error, 'Failed to serve entry'));
     }
   };
 
@@ -36,9 +36,8 @@ export const useQueueManagement = () => {
     try {
       const updatedQueue = await queueApi.reorder(id, action);
       setQueue(updatedQueue);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (_error) {
-      alert('Failed to reorder');
+    } catch (error) {
+      alert(extractApiErrorMessage(error, 'Failed to reorder'));
     } finally {
       setLoading(false);
     }
@@ -49,9 +48,8 @@ export const useQueueManagement = () => {
     try {
       await queueApi.resetQueue();
       fetchQueue();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (_error) {
-      alert('Failed to reset queue');
+    } catch (error) {
+      alert(extractApiErrorMessage(error, 'Failed to reset queue'));
     }
   };
 

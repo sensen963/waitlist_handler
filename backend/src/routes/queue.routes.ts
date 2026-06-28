@@ -3,20 +3,29 @@ import { z } from "zod";
 import { queueService } from "../services/queue.service";
 
 const router = Router();
+const phoneNumberSchema = z
+  .string()
+  .trim()
+  .regex(/^(?:\d{10,11}|(?:\d{2,4}-){2}\d{3,4})$/, "Phone number must be 10-11 digits or a hyphenated number");
+const ticketNumberSchema = z
+  .string()
+  .trim()
+  .regex(/^T-\d{3,}$/, "Ticket number must match T-001 format");
+const queueIdSchema = z.coerce.number().int().positive();
 
 // Validation schemas
 const addEntrySchema = z.object({
-  peopleCount: z.number().min(1),
-  phoneNumber: z.string().min(1),
+  peopleCount: z.number().int().min(1).max(20),
+  phoneNumber: phoneNumberSchema,
 });
 
 const cancelEntrySchema = z.object({
-  ticketNumber: z.string(),
-  phoneNumber: z.string(),
+  ticketNumber: ticketNumberSchema,
+  phoneNumber: phoneNumberSchema,
 });
 
 const reorderSchema = z.object({
-  id: z.number(),
+  id: queueIdSchema,
   action: z.enum(["UP", "DOWN", "TOP", "BOTTOM"]),
 });
 
@@ -50,11 +59,12 @@ router.get("/", asyncHandler(async (req, res) => {
 
 // Get status by ticket number
 router.get("/status/:ticketNumber", asyncHandler(async (req, res) => {
-  const ticketNumber = req.params.ticketNumber as string;
+  const ticketNumber = ticketNumberSchema.parse(req.params.ticketNumber);
   const status = await queueService.getStatusByTicket(ticketNumber);
   if (!status) {
     const error: any = new Error("Ticket not found or already served");
     error.status = 404;
+    error.code = "TICKET_NOT_FOUND";
     throw error;
   }
   res.json(status);
@@ -69,7 +79,7 @@ router.delete("/cancel", asyncHandler(async (req, res) => {
 
 // Serve entry
 router.delete("/:id", asyncHandler(async (req, res) => {
-  const id = parseInt(req.params.id as string);
+  const id = queueIdSchema.parse(req.params.id);
   await queueService.serveEntry(id);
   res.json({ success: true });
 }));
